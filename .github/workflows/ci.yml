@@ -1,0 +1,34 @@
+name: Build RPM Package
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-rpm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build RPM in Fedora
+        run: |
+          docker run --rm -v ${{ github.workspace }}:/github/workspace -w /github/workspace fedora:latest /bin/bash -c "
+            dnf install -y rpm-build rpmdevtools python3-devel python3-pip gcc make meson ninja-build gtk4-devel libadwaita-devel gettext aria2 ffmpeg &&
+            rpmdev-setuptree &&
+            cp varia.spec ~/rpmbuild/SPECS/ &&
+            spectool -g -R ~/rpmbuild/SPECS/varia.spec &&
+            rpmbuild -ba ~/rpmbuild/SPECS/varia.spec &&
+            mkdir -p /github/workspace/artifacts &&
+            cp ~/rpmbuild/RPMS/noarch/*.rpm /github/workspace/artifacts/
+          "
+
+      - name: Upload RPM Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-package
+          path: artifacts/*.rpm
